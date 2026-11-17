@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Emergency SOS</title>
+  <link href="https://jsdelivr.net" rel="stylesheet">
+</head>
+<body class="bg-light d-flex align-items-center justify-content-center vh-100">
+  <div class="card shadow p-4 text-center" style="max-width: 420px; width: 100%;">
+    <h3 class="mb-3 text-danger fw-bold">Smart Emergency SOS</h3>
+    <p class="text-muted small">Select emergency type and trigger instant nearest-unit dispatch.</p>
+    <select id="type" class="form-select mb-3">
+      <option value="ambulance">Medical / Ambulance</option>
+      <option value="police">Police Patrol</option>
+      <option value="fire">Fire Brigade</option>
+    </select>
+    <button onclick="sendSOS()" class="btn btn-danger btn-lg w-100 py-3 fw-bold">SEND SOS ALERT</button>
+    <div id="result" class="mt-3 text-start small"></div>
+  </div>
+
+  <script>
+    function sendSOS() {
+      const resultDiv = document.getElementById('result');
+      const emergency_type = document.getElementById('type').value;
+      resultDiv.innerHTML = '<div class="alert alert-info">Acquiring GPS coordinates...</div>';
+
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const res = await fetch('http://localhost:8000/api/sos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emergency_type,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            resultDiv.innerHTML = `<div class="alert alert-success">
+              <strong>Help Dispatched!</strong><br>
+              Assigned Unit: <b>${data.assigned_responder.name}</b><br>
+              Distance: <b>${data.distance_km} km</b> away
+            </div>`;
+          } else {
+            resultDiv.innerHTML = `<div class="alert alert-warning">${data.detail}</div>`;
+          }
+        } catch (err) {
+          resultDiv.innerHTML = '<div class="alert alert-danger">Cannot connect to Python server. Make sure uvicorn is running!</div>';
+        }
+      }, () => {
+        resultDiv.innerHTML = '<div class="alert alert-danger">Please allow location access in your browser.</div>';
+      });
+    }
+  </script>
+</body>
+</html>
